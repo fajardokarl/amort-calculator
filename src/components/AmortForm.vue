@@ -1,26 +1,49 @@
 <template>
   <div id="amort-form">
-    <form class="mainform">
+    <form class="mainform" @submit.prevent="calculateAmort">
       <h2 class="mainform__title">Payment Details</h2>
       <div class="mainform__body">
         <div class="mainform__amount">
           <label for="totalamount"><h3>Total Amount</h3></label>
-          <input type="text" class="totalamount" id="totalamount">
+          <input
+            type="number"
+            class="totalamount"
+            v-model="totalAmount"
+            required
+          />
+        </div>
+        <div class="mainform__date">
+          <label><h3>Start Date</h3></label>
+          <input
+            type="date"
+            v-model="startDate"
+            required
+          />
         </div>
         <div class="mainform__downpayment">
           <h3>Downpayment</h3>
           <div class="mini-inputs">
             <div>
               <label>%</label>
-              <input type="text" class="totalamount" id="totalamount">
+              <input
+                type="number"
+                v-model="dpPercentage"
+                max="100"
+              />
             </div>
             <div>
               <label>Interest Rate</label>
-              <input type="text" class="totalamount" id="totalamount" placeholder="%">
+              <input
+                type="number"
+                v-model="dpInterestRate"
+              />
             </div>
             <div>
               <label>Term/s</label>
-              <input type="text" class="totalamount" id="totalamount">
+              <input
+                type="number"
+                v-model="dpTerms"
+              />
             </div>
           </div>
         </div>
@@ -30,15 +53,25 @@
           <div class="mini-inputs">
             <div>
               <label>%</label>
-              <input type="text" class="totalamount" id="totalamount">
+              <input
+                type="number"
+                v-model="balPercentage"
+                readonly
+              />
             </div>
             <div>
               <label>Interest Rate</label>
-              <input type="text" class="totalamount" id="totalamount" placeholder="%">
+              <input
+                type="text"
+                v-model="balInterestRate"
+              />
             </div>
             <div>
               <label>Term/s</label>
-              <input type="text" class="totalamount" id="totalamount">
+              <input
+                type="text"
+                v-model="balTerms"
+              />
             </div>
           </div>
         </div>
@@ -47,13 +80,124 @@
         <button> Calculate </button>
       </div>
     </form>
+
+    <!-- <div>
+      <div v-for="result in results" :key="result.currentDate">
+        {{ result }}
+      </div>
+    </div> -->
+    <ResultTable :results=results />
+
   </div>
 </template>
 
 <script>
+import Accounting from '@/lib/accounting'
+import moment from 'moment'
+import ResultTable from '@/components/ResultTable'
+
 export default {
   name: 'AmortForm',
+  components: {
+    ResultTable
+  },
+  watch: {
+    dpPercentage (val) {
+      this.balPercentage = val && val <= 100 ? 100 - val : ''
+    }
+  },
+  data () {
+    return {
+      totalAmount: '',
+      startDate: new Date().toISOString().substr(0, 10),
+      dpPercentage: '',
+      dpInterestRate: '',
+      dpTerms: '',  
+      balPercentage: '',
+      balInterestRate: '',
+      balTerms: '',
+      runBalance: '',
+      results: []
+    }
+  },
+  methods: {
+    calculateAmort () {
+      this.results = []
+      this.runBalance = this.totalAmount
+      Promise.resolve()
+      .then(
+        this.calculateAll(this.totalAmount, this.dpPercentage, this.dpInterestRate, this.dpTerms)
+      ).then(
+        this.calculateAll(this.totalAmount, this.balPercentage, this.balInterestRate, this.balTerms)
+      )
+      console.log(this.results)
 
+    },
+    calculateAll (totalAmount, percentage, interestRate, terms) {
+      
+      const newTotalAmount = totalAmount * (percentage / 100)
+      const interest = (interestRate / 100) / 12;
+      const monthlyWithInterest = ((newTotalAmount * (Math.pow((1 + interest), terms)) * interest) / (Math.pow((1 + interest), terms) - 1));
+      
+      let totalprincipal = 0
+      let dpRunBal = newTotalAmount
+      let currentDate  = moment(this.startDate).format('MMM DD, YYYY')
+
+
+      for (let i = 0; i < terms; i++) {
+        currentDate = moment(this.startDate).add(1, 'month').format('MMM DD, YYYY')
+        this.startDate = currentDate
+
+        if (interestRate > 0) {
+          // calculate monthly principal with interest
+
+          const interestAmount = dpRunBal * interest
+          const principal = monthlyWithInterest - interestAmount
+
+
+          this.runBalance -= principal
+          dpRunBal -= principal
+          // totalprincipal += parseFloat(principal.toPrecision(2))
+
+          const tempRunBal = Math.round(Accounting.toFixed(this.runBalance, 2) * 10) / 10
+
+          // console.log(`${monthlyWithInterest} - ${interestAmount} ===> ${principal.toPrecision(2)}`)
+          // console.log(currentDate)
+          console.log('Run Bal', i, this.runBalance)
+          
+          this.results = [
+            ...this.results, {
+              'date': currentDate, 
+              'amort': Accounting.formatMoney(monthlyWithInterest, ''),
+              'interest': Accounting.formatMoney(interestAmount, ''),
+              'principal': Accounting.formatMoney(principal, ''),
+              'runBalance': Accounting.formatMoney(tempRunBal, '')
+            }
+          ]
+
+        } else {
+          // calculate monthly
+          const monthly = newTotalAmount / terms
+          const interest = 0
+
+          this.runBalance -= Accounting.toFixed(monthly, 2)
+          const tempRunBal = Math.round(Accounting.toFixed(this.runBalance, 2) * 10) / 10
+          // console.log(i, this.runBalance)
+          console.log(monthly,  monthly.toPrecision(2))
+          
+          this.results = [
+            ...this.results, {
+              'date': currentDate, 
+              'amort': monthly,
+              'interest': interestAmount,
+              'principal': monthly,
+              'runBalance': tempRunBal
+            }
+          ]
+        }
+      }
+    }
+  }
 }
 </script>
 
@@ -68,6 +212,11 @@ export default {
   background: #fff;
   border-radius: 15px;
   position: relative;
+}
+
+.totalamount {
+  padding: 12.5px 8px;
+  text-align: right;
 }
 
 .mainform__title {
@@ -88,6 +237,7 @@ export default {
 
 .mainform__body h3 {
   margin: 20px 8px;
+  color: var(--main-black)
 }
 
 .mainform__downpayment, .mainform__amortization {
@@ -113,15 +263,15 @@ export default {
   font-weight: 600;
 }
 
-.mainform__amount {
-  grid-column: 1 / 3;
+.mainform__amount, .mainform__date {
+  /* grid-column: 1 / 3; */
   display: flex;
   flex-direction: column;
   width: 400px;
 }
 
-.mainform__amount h3 {
-  margin: 0;
+.mainform__amount h3, .mainform__date h3 {
+  margin: 1em 0px;
 }
 
 .mini-inputs {

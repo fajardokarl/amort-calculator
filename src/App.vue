@@ -53,12 +53,22 @@ a {
   color: #fff;
 }
 
-input[type="text"] {
-  padding: 10px 5px;
+input {
+  padding: 10px 8px;
   border: solid 2px var(--secondary-accent);
   border-radius: 10px;
   font-size: 14px;
   width: inherit;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
 }
 
 input:focus, input:active {
@@ -71,7 +81,7 @@ label {
 }
 
 .container {
-  max-width: 1364px;
+  max-width: 1200px;
 }
 
 #header {
