@@ -14,7 +14,6 @@ export default {
   name: 'Home',
   components: {
     AmortForm,
-    // ResultTable
   }
 }
 </script>

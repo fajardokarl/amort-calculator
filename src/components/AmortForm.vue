@@ -62,14 +62,14 @@
             <div>
               <label>Interest Rate</label>
               <input
-                type="text"
+                type="number"
                 v-model="balInterestRate"
               />
             </div>
             <div>
               <label>Term/s</label>
               <input
-                type="text"
+                type="number"
                 v-model="balTerms"
               />
             </div>
@@ -86,7 +86,7 @@
         {{ result }}
       </div>
     </div> -->
-    <ResultTable :results=results />
+    <ResultTable v-if="results.length" :results=results />
 
   </div>
 </template>
@@ -104,6 +104,10 @@ export default {
   watch: {
     dpPercentage (val) {
       this.balPercentage = val && val <= 100 ? 100 - val : ''
+    },
+    startDate(val) {
+      console.log(val)
+      this.runDate = val
     }
   },
   data () {
@@ -117,7 +121,8 @@ export default {
       balInterestRate: '',
       balTerms: '',
       runBalance: '',
-      results: []
+      results: [],
+      runDate: new Date().toISOString().substr(0, 10)
     }
   },
   methods: {
@@ -126,27 +131,25 @@ export default {
       this.runBalance = this.totalAmount
       Promise.resolve()
       .then(
-        this.calculateAll(this.totalAmount, this.dpPercentage, this.dpInterestRate, this.dpTerms)
+        this.calculateAll(this.totalAmount, this.dpPercentage, this.dpInterestRate, this.dpTerms, 'dp')
       ).then(
-        this.calculateAll(this.totalAmount, this.balPercentage, this.balInterestRate, this.balTerms)
+        this.calculateAll(this.totalAmount, this.balPercentage, this.balInterestRate, this.balTerms, 'amort')
       )
-      console.log(this.results)
-
     },
-    calculateAll (totalAmount, percentage, interestRate, terms) {
+    calculateAll (totalAmount, percentage, interestRate, terms, type) {
       
       const newTotalAmount = totalAmount * (percentage / 100)
       const interest = (interestRate / 100) / 12;
       const monthlyWithInterest = ((newTotalAmount * (Math.pow((1 + interest), terms)) * interest) / (Math.pow((1 + interest), terms) - 1));
-      
+
       let totalprincipal = 0
       let dpRunBal = newTotalAmount
-      let currentDate  = moment(this.startDate).format('MMM DD, YYYY')
+      let currentDate  = moment(this.runDate).format('MMM DD, YYYY')
 
 
       for (let i = 0; i < terms; i++) {
-        currentDate = moment(this.startDate).add(1, 'month').format('MMM DD, YYYY')
-        this.startDate = currentDate
+        currentDate = moment(this.runDate).add(1, 'month').format('MMM DD, YYYY')
+        this.runDate = currentDate
 
         if (interestRate > 0) {
           // calculate monthly principal with interest
@@ -154,19 +157,14 @@ export default {
           const interestAmount = dpRunBal * interest
           const principal = monthlyWithInterest - interestAmount
 
-
           this.runBalance -= principal
           dpRunBal -= principal
-          // totalprincipal += parseFloat(principal.toPrecision(2))
 
           const tempRunBal = Math.round(Accounting.toFixed(this.runBalance, 2) * 10) / 10
-
-          // console.log(`${monthlyWithInterest} - ${interestAmount} ===> ${principal.toPrecision(2)}`)
-          // console.log(currentDate)
-          console.log('Run Bal', i, this.runBalance)
           
           this.results = [
             ...this.results, {
+              'type': type,
               'date': currentDate, 
               'amort': Accounting.formatMoney(monthlyWithInterest, ''),
               'interest': Accounting.formatMoney(interestAmount, ''),
@@ -177,21 +175,26 @@ export default {
 
         } else {
           // calculate monthly
-          const monthly = newTotalAmount / terms
-          const interest = 0
-
-          this.runBalance -= Accounting.toFixed(monthly, 2)
-          const tempRunBal = Math.round(Accounting.toFixed(this.runBalance, 2) * 10) / 10
-          // console.log(i, this.runBalance)
-          console.log(monthly,  monthly.toPrecision(2))
+          let monthly = newTotalAmount / terms
+          const interestAmount = 0.00
           
+          if (this.runBalance < monthly) {
+            monthly = this.runBalance
+            this.runBalance = 0.00
+          } else {
+              this.runBalance -= Accounting.toFixed(monthly, 2)
+          // const tempRunBal = Math.round(Accounting.toFixed(this.runBalance, 2) * 10) / 10
+          }
+
+          const tempRunBal = this.runBalance
           this.results = [
             ...this.results, {
+              'type': type,
               'date': currentDate, 
-              'amort': monthly,
+              'amort': Accounting.formatMoney(monthly, ''),
               'interest': interestAmount,
-              'principal': monthly,
-              'runBalance': tempRunBal
+              'principal': Accounting.formatMoney(monthly, ''),
+              'runBalance': Accounting.formatMoney(tempRunBal, '')
             }
           ]
         }
@@ -267,7 +270,7 @@ export default {
   /* grid-column: 1 / 3; */
   display: flex;
   flex-direction: column;
-  width: 400px;
+  width: 80%;
 }
 
 .mainform__amount h3, .mainform__date h3 {
@@ -288,14 +291,31 @@ export default {
     justify-content: flex-end;
 }
 
-@media (max-width: 800px) {
+@media screen and (max-width: 767px) {
+  .mainform__title {
+    display: none;
+  }
+  
+  .mainform__body {
+    margin: 1em;
+  }
+
+  .mainform__amount, .mainform__date {
+    width: auto;
+  }
+
   .mainform__body {
     grid-template: 1fr / 1fr;
+  }
+  
+  .mainform__button {
+    justify-content: center;
   }
 
   .mainform__amount {
     grid-column: 1 / 2;
   }
+
 }
 
 </style>

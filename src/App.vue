@@ -28,7 +28,7 @@
 
 :root {
   --background: #EFF3F8;
-  --primary-accent: #9170A3;
+  --primary-accent: #844db1;
   --secondary-accent: #B082C9;
   --yellow-accent: #FCD465;
   --main-black: #707070;
@@ -78,6 +78,7 @@ input:focus, input:active {
 label {
   color: var(--main-black);
   margin: 2px 8px;
+  white-space: nowrap;
 }
 
 .container {
@@ -85,7 +86,11 @@ label {
 }
 
 #header {
-  background: var(--secondary-accent);
+  background: rgb(132,77,177);
+  background: -moz-linear-gradient(90deg, rgba(132,77,177,1) 0%, rgba(176,130,192,1) 100%);
+  background: -webkit-linear-gradient(90deg, rgba(132,77,177,1) 0%, rgba(176,130,192,1) 100%);
+  background: linear-gradient(90deg, rgba(132,77,177,1) 0%, rgba(176,130,192,1) 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#844db1",endColorstr="#b082c0",GradientType=1);
 }
 
 .container  {
@@ -94,7 +99,8 @@ label {
   align-items: center;
   margin: 0 auto;
 }
- h1 {
+.logo {
+  margin: auto 10px;
 }
 
 #header ul  {
@@ -113,4 +119,13 @@ label {
   color: var(--yellow-accent);
 }
 
+@media screen and (max-width: 767px) {
+  label {
+    font-size: 13px;
+  }
+
+  .hide {
+    display: none;
+  }
+}
 </style>
